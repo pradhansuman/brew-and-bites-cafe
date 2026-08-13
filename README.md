@@ -130,15 +130,29 @@ described in "Making it real-time" — the UPI apps themselves always work; only
 the auto-confirm is manual here.
 
 ### Real SMS OTP (instead of the on-screen demo OTP)
-The demo OTP is shown on screen because a static site cannot send SMS by
-itself. Two ways to go real (pick one, I can implement either):
-1. **Firebase Phone Auth** (no server, works on static hosting) — needs a
-   Firebase project with phone sign-in enabled (Blaze plan) + a reCAPTCHA
-   config; customers get a real SMS OTP. App stays a single static deploy.
-2. **Small API + SMS provider** — a tiny Node service on Render (second
-   service) that calls MSG91 / Fast2SMS / Twilio to send and verify OTPs;
-   app calls `POST /api/send-otp`. Fully self-contained, no Firebase billing,
-   but two Render services and provider API keys.
+**Firebase Phone Auth is implemented** in the app (no server needed — works on
+any static host). The app ships in `demo` mode; to go real:
+
+1. console.firebase.google.com → **Add project** (Analytics optional → off).
+2. Build → **Authentication** → **Get started** → **Sign-in method** →
+   enable **Phone**.
+3. Project settings → **Billing** → upgrade to **Blaze** (pay-as-you-go) —
+   phone-auth SMS is a paid Firebase feature.
+4. Project settings → **Your apps** → **Web app (</>)** → copy the config.
+5. In `js/data.js`, fill `CAFE.otp`:
+   `mode: "firebase"` and the `firebaseConfig` values (`apiKey`,
+   `authDomain`, `projectId`, `appId`).
+6. Authentication → **Settings** → **Authorized domains**: add your deployed
+   domain (e.g. `brew-and-bites-cafe.onrender.com`) and the preview domain.
+7. Deploy. Login now sends a **real 6-digit SMS OTP** (+91 prefix) with an
+   invisible reCAPTCHA. Demo mode stays as the fallback — if `firebaseConfig`
+   is empty the app shows a clear warning instead of failing.
+
+Notes:
+- **India**: phone-auth SMS follows carrier rules — test with your own number
+  first; if SMS doesn't arrive, check Firebase Console → Authentication logs.
+- Quota: ~10 SMS per number per hour (safety default) — expected during testing.
+- reCAPTCHA not loading? Add that domain to Authorized domains (step 6).
 
 ### Admin didn't get the notification
 - Demo mode: admin and customer must share the same device/browser
@@ -165,9 +179,9 @@ Notes:
   (`CAFE.rt` in `js/data.js`, see "Making it real-time").
 - Set your real UPI ID in `js/data.js` or Admin → UPI Settings
   (currently `9900905159@ybl`).
-- **Real SMS OTP** is not part of the static build — see "Real SMS OTP" in
-  Troubleshooting for the two options (Firebase Phone Auth, or a small OTP
-  API service).
+- **Real SMS OTP** is built in via Firebase Phone Auth — switch
+  `CAFE.otp.mode` from `"demo"` to `"firebase"` and paste your
+  `firebaseConfig` (see "Real SMS OTP" in Troubleshooting).
 - `nginx.conf` is only used by the Function Compute deployment — Render
   ignores it.
 

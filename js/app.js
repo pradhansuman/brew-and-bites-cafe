@@ -77,6 +77,8 @@ const isDefaultVpa = () => {
 };
 const isMobileUA = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
 const isIOSUA = () => /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+const otpMode = () => (CAFE.otp && CAFE.otp.mode) || 'demo';
+const otpLen = () => (otpMode() === 'firebase' ? 6 : 4);
 
 function copyText(t) {
   try {
@@ -433,16 +435,16 @@ function renderLogin(view) {
           </div>
         </div>
         <button id="sendOtpBtn" class="btn btn-dark">Send OTP</button>
-        <div class="demo-note">Demo mode: the OTP is shown on screen (no real SMS is sent). A free table is assigned to you automatically.</div>
+        <div id="recaptcha-container"></div>
+        ${otpMode() === 'firebase'
+          ? '<div class="demo-note">Real OTP: a text message will be sent to your number via Firebase.</div>'
+          : '<div class="demo-note">Demo mode: the OTP is shown on screen (no real SMS is sent). A free table is assigned to you automatically.</div>'}
       </div>
       <div id="stepOtp" class="hidden">
         <div class="field">
           <label>Hi <span id="otpNameLabel"></span> &mdash; enter the OTP sent to +91 <span id="otpPhoneLabel"></span></label>
           <div class="otp-grid">
-            <input class="otp-input" data-i="0" maxlength="1" inputmode="numeric">
-            <input class="otp-input" data-i="1" maxlength="1" inputmode="numeric">
-            <input class="otp-input" data-i="2" maxlength="1" inputmode="numeric">
-            <input class="otp-input" data-i="3" maxlength="1" inputmode="numeric">
+            ${Array.from({ length: otpLen() }, (_, i) => '<input class="otp-input" data-i="' + i + '" maxlength="1" inputmode="numeric">').join('')}
           </div>
         </div>
         <button id="verifyOtpBtn" class="btn btn-dark">Verify &amp; Continue</button>
@@ -463,7 +465,7 @@ function renderLogin(view) {
     inp.addEventListener('input', () => {
       inp.value = inp.value.replace(/\D/g, '');
       const n = +inp.dataset.i;
-      if (inp.value && n < 3) $$('.otp-input')[n + 1].focus();
+      if (inp.value && n < otpLen() - 1) $$('.otp-input')[n + 1].focus();
     });
     inp.addEventListener('keydown', e => {
       if (e.key === 'Backspace' && !inp.value && inp.dataset.i > 0) $$('.otp-input')[+inp.dataset.i - 1].focus();
@@ -476,7 +478,16 @@ function sendOtp() {
   const phone = $('#phoneInput').value.replace(/\D/g, '');
   if (!name) { toast('Please enter your name', '\u26A0\uFE0F', 'warn'); $('#nameInput').focus(); return; }
   if (phone.length !== 10) { toast('Enter a valid 10-digit mobile number', '\u26A0\uFE0F', 'warn'); return; }
+  if (otpMode() === 'firebase') { sendOtpFirebase(name, phone); return; }
   state.otp = String(Math.floor(1000 + Math.random() * 9000));
+  state.otpPhone = phone;
+  state.otpName = name;
+  showOtpStep(name, phone);
+  toast('Demo OTP: ' + state.otp, '\uD83D\uDCAC');
+  beep(660, 0.12);
+}
+
+function showOtpStep(name, phone) {
   state.otpPhone = phone;
   state.otpName = name;
   $('#stepPhone').classList.add('hidden');
@@ -485,24 +496,103 @@ function sendOtp() {
   $('#otpPhoneLabel').textContent = phone;
   $$('#stepOtp .otp-input').forEach(i => i.value = '');
   $$('#stepOtp .otp-input')[0].focus();
-  toast('Demo OTP: ' + state.otp, '\uD83D\uDCAC');
-  beep(660, 0.12);
 }
 
-function verifyOtp() {
-  const code = $$('.otp-input').map(i => i.value).join('');
-  if (code.length !== 4) { toast('Enter the 4-digit OTP', '\u26A0\uFE0F', 'warn'); return; }
-  if (code !== state.otp) { toast('Wrong OTP, try again', '\u274C', 'warn'); $$('.otp-input').forEach(i => i.value = ''); $$('.otp-input')[0].focus(); return; }
-
-  const table = assignTable(state.otpName, state.otpPhone);
+function completeLogin(name, phone) {
+  const table = assignTable(name, phone);
   if (!table) {
     toast('All tables are full right now. Please wait a bit.', '\uD83E\uDEF1', 'warn');
     return;
   }
-  state.user = { name: state.otpName, phone: state.otpPhone, table, loginAt: nowISO() };
+  state.user = { name, phone, table, loginAt: nowISO() };
   store.set('cafe_session', state.user);
-  toast('Welcome, ' + state.otpName + '! You are at Table ' + table + ' \u2615', '\uD83D\uDC4B', 'success');
+  toast('Welcome, ' + name + '! You are at Table ' + table + ' \u2615', '\uD83D\uDC4B', 'success');
   go('#/menu');
+}
+
+function verifyOtp() {
+  const code = $$('.otp-input').map(i => i.value).join('');
+  const len = otpLen();
+  if (code.length !== len) { toast('Enter the ' + len + '-digit OTP', '\u26A0\uFE0F', 'warn'); return; }
+  if (otpMode() === 'firebase') { verifyOtpFirebase(code); return; }
+  if (code !== state.otp) { toast('Wrong OTP, try again', '\u274C', 'warn'); $$('.otp-input').forEach(i => i.value = ''); $$('.otp-input')[0].focus(); return; }
+  completeLogin(state.otpName, state.otpPhone);
+}
+
+/* ---------- Firebase Phone Auth (real SMS OTP) ---------- */
+function loadFirebaseSdk() {
+  if (window.firebase && window.firebase.auth && window.firebase.initializeApp) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const base = 'https://www.gstatic.com/firebasejs/10.12.2/';
+    const names = ['firebase-app-compat.js', 'firebase-auth-compat.js'];
+    let done = false;
+    const timer = setTimeout(() => finish(false), 15000);
+    const finish = ok => { if (done) return; done = true; clearTimeout(timer); ok ? resolve() : reject(new Error('Firebase SDK failed to load')); };
+    names.forEach(name => {
+      const s = document.createElement('script');
+      s.src = base + name;
+      s.async = true;
+      s.onload = () => { if (window.firebase && window.firebase.auth && window.firebase.initializeApp) finish(true); };
+      s.onerror = () => finish(false);
+      document.head.appendChild(s);
+    });
+  });
+}
+
+function fbOtpError(err) {
+  const map = {
+    'auth/invalid-phone-number': 'That phone number is not valid.',
+    'auth/quota-exceeded': 'SMS quota exceeded for this number - try again later.',
+    'auth/missing-verifier': 'reCAPTCHA failed - please retry.',
+    'auth/captcha-check-failed': 'reCAPTCHA check failed - please retry.',
+    'auth/too-many-requests': 'Too many attempts - wait a minute and retry.',
+    'auth/operation-not-allowed': 'Phone sign-in is not enabled in the Firebase Console.',
+    'auth/unauthorized-continue-uri': 'Add this domain to Firebase -> Authorized domains.',
+    'auth/network-request-failed': 'Network error - check your connection.'
+  };
+  return (err && map[err.code]) || (err && err.message) || 'OTP failed - try again.';
+}
+
+async function sendOtpFirebase(name, phone) {
+  const cfg = (CAFE.otp && CAFE.otp.firebaseConfig) || {};
+  if (!cfg.apiKey || !cfg.authDomain || !cfg.projectId || !cfg.appId) {
+    toast('Firebase is not configured - the admin must fill CAFE.otp.firebaseConfig in js/data.js.', '\u26A0\uFE0F', 'warn');
+    return;
+  }
+  const btn = $('#sendOtpBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending OTP...';
+  try {
+    await loadFirebaseSdk();
+    if (!window.__fbApp) window.__fbApp = window.firebase.initializeApp(cfg);
+    const auth = window.firebase.auth(window.__fbApp);
+    const verifier = new window.firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible' });
+    state.fbConfirm = await auth.signInWithPhoneNumber('+91' + phone, verifier);
+    showOtpStep(name, phone);
+    toast('OTP sent by SMS to +91 ' + phone, '\uD83D\uDCE9');
+  } catch (err) {
+    console.error('Firebase OTP send failed', err);
+    toast(fbOtpError(err), '\u26A0\uFE0F', 'warn');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send OTP';
+  }
+}
+
+async function verifyOtpFirebase(code) {
+  if (!state.fbConfirm) { toast('No OTP in progress - tap Send OTP again', '\u26A0\uFE0F', 'warn'); return; }
+  const btn = $('#verifyOtpBtn');
+  btn.disabled = true;
+  try {
+    await state.fbConfirm.confirm(code);
+    completeLogin(state.otpName, state.otpPhone);
+  } catch (err) {
+    toast((err && err.code === 'auth/invalid-verification-code') ? 'Wrong OTP, try again' : fbOtpError(err), '\u274C', 'warn');
+    $$('.otp-input').forEach(i => i.value = '');
+    $$('.otp-input')[0].focus();
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 /* ============ MENU ============ */

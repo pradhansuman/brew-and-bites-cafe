@@ -17,6 +17,19 @@ const CAFE = {
   gstRate: 0.05,          // 5% GST
   adminPasscode: "1234",  // admin dashboard passcode (demo)
   tables: 12,             // number of tables for auto-assignment
+  // OTP delivery:
+  //  mode "demo"     → OTP shown on screen (no SMS; for testing)
+  //  mode "firebase" → real SMS OTP via Firebase Phone Auth. Requires:
+  //    a) Firebase project with Authentication → Phone sign-in enabled
+  //    b) Billing (Blaze) enabled on the project (phone auth SMS is paid)
+  //    c) Web-app config pasted below (Firebase Console → Project settings
+  //       → Your apps → Web app → SDK setup and configuration)
+  //    d) Your deployed domain added to Authentication → Settings →
+  //       Authorized domains (e.g. https://your-app.onrender.com)
+  otp: {
+    mode: "demo", // "demo" | "firebase"
+    firebaseConfig: { apiKey: "", authDomain: "", projectId: "", appId: "" }
+  },
   // REAL-TIME sync (optional, zero backend):
   // 1. Create a free Firebase project → Realtime Database (start in test mode)
   // 2. Copy the database URL, e.g. https://my-cafe-12345-default-rtdb.firebaseio.com
