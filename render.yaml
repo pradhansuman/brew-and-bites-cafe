@@ -1,0 +1,9 @@
+# Render Blueprint — Brew & Bites Cafe (static site)
+# Usage: Render dashboard → New → Blueprint → select this repo.
+# Or deploy manually: New → Static Site → Build command: (empty) → Publish directory: "."
+services:
+  - type: web
+    name: brew-and-bites-cafe
+    runtime: static
+    staticPublishPath: .
+    buildCommand: echo "Plain static site - no build step required"

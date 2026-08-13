@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3E2723">
+<meta name="description" content="Brew &amp; Bites Cafe — browse the menu, order, and pay by UPI right from your phone. The bill is settled the moment you finish.">
+<title>Brew &amp; Bites Cafe — Order &amp; Pay by UPI</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="app">
+  <header id="appHeader" class="hidden">
+    <button id="backBtn" class="icon-btn" aria-label="Back">&#8592;</button>
+    <div class="brand">&#9749; Brew &amp; Bites</div>
+    <button id="cartBtn" class="icon-btn cart-btn hidden" aria-label="Cart">
+      &#128722;<span id="cartBadge" class="badge hidden">0</span>
+    </button>
+    <span id="headerSpacer" class="icon-btn hidden" aria-hidden="true"></span>
+  </header>
+  <main id="view"></main>
+  <footer id="appFooter" class="hidden">
+    <span>Demo build &middot; payments simulated</span>
+  </footer>
+</div>
+<div id="toastWrap" aria-live="polite"></div>
+<div id="modalWrap"></div>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
