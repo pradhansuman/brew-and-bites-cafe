@@ -545,7 +545,7 @@ function fbOtpError(err) {
     'auth/quota-exceeded': 'SMS quota exceeded for this number - try again later.',
     'auth/missing-verifier': 'reCAPTCHA failed - please retry.',
     'auth/captcha-check-failed': 'reCAPTCHA check failed - please retry.',
-    'auth/too-many-requests': 'Too many attempts - wait a minute and retry.',
+    'auth/too-many-requests': 'Too many OTP requests from this number/device - wait up to 1 hour, or try a different number.',
     'auth/operation-not-allowed': 'Phone sign-in is not enabled in the Firebase Console.',
     'auth/unauthorized-continue-uri': 'Add this domain to Firebase -> Authorized domains.',
     'auth/network-request-failed': 'Network error - check your connection.'
