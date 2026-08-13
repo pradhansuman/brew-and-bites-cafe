@@ -27,8 +27,13 @@ const CAFE = {
   //    d) Your deployed domain added to Authentication → Settings →
   //       Authorized domains (e.g. https://your-app.onrender.com)
   otp: {
-    mode: "demo", // "demo" | "firebase"
-    firebaseConfig: { apiKey: "", authDomain: "", projectId: "", appId: "" }
+    mode: "firebase", // "demo" | "firebase" — firebase sends real SMS via Firebase Phone Auth
+    firebaseConfig: {
+      apiKey: "AIzaSyD3V9mjOe_bLqpqEwmevrbvKgdNATC6IWs",
+      authDomain: "cafee-bee.firebaseapp.com",
+      projectId: "cafee-bee",
+      appId: "1:167940020266:web:29f2d435730ea1ff630b53"
+    }
   },
   // REAL-TIME sync (optional, zero backend):
   // 1. Create a free Firebase project → Realtime Database (start in test mode)

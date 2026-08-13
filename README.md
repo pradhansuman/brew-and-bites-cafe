@@ -131,22 +131,19 @@ the auto-confirm is manual here.
 
 ### Real SMS OTP (instead of the on-screen demo OTP)
 **Firebase Phone Auth is implemented** in the app (no server needed — works on
-any static host). The app ships in `demo` mode; to go real:
+any static host). The app already ships with the **`cafee-bee` project wired
+in** (`CAFE.otp.mode: "firebase"` + real `firebaseConfig`). Before customers
+can log in, finish these 3 console steps:
 
-1. console.firebase.google.com → **Add project** (Analytics optional → off).
-2. Build → **Authentication** → **Get started** → **Sign-in method** →
+1. Build → **Authentication** → **Get started** → **Sign-in method** →
    enable **Phone**.
-3. Project settings → **Billing** → upgrade to **Blaze** (pay-as-you-go) —
+2. Project settings → **Billing** → upgrade to **Blaze** (pay-as-you-go) —
    phone-auth SMS is a paid Firebase feature.
-4. Project settings → **Your apps** → **Web app (</>)** → copy the config.
-5. In `js/data.js`, fill `CAFE.otp`:
-   `mode: "firebase"` and the `firebaseConfig` values (`apiKey`,
-   `authDomain`, `projectId`, `appId`).
-6. Authentication → **Settings** → **Authorized domains**: add your deployed
+3. Authentication → **Settings** → **Authorized domains**: add your deployed
    domain (e.g. `brew-and-bites-cafe.onrender.com`) and the preview domain.
-7. Deploy. Login now sends a **real 6-digit SMS OTP** (+91 prefix) with an
-   invisible reCAPTCHA. Demo mode stays as the fallback — if `firebaseConfig`
-   is empty the app shows a clear warning instead of failing.
+
+To flip back to the on-screen demo OTP anytime (local testing), set
+`CAFE.otp.mode: "demo"` in `js/data.js`.
 
 Notes:
 - **India**: phone-auth SMS follows carrier rules — test with your own number
@@ -179,9 +176,9 @@ Notes:
   (`CAFE.rt` in `js/data.js`, see "Making it real-time").
 - Set your real UPI ID in `js/data.js` or Admin → UPI Settings
   (currently `9900905159@ybl`).
-- **Real SMS OTP** is built in via Firebase Phone Auth — switch
-  `CAFE.otp.mode` from `"demo"` to `"firebase"` and paste your
-  `firebaseConfig` (see "Real SMS OTP" in Troubleshooting).
+- **Real SMS OTP** is wired to your Firebase project (`cafee-bee`) — see
+  "Real SMS OTP" in Troubleshooting for the 3 remaining console steps
+  (enable Phone sign-in, Blaze billing, authorized domains).
 - `nginx.conf` is only used by the Function Compute deployment — Render
   ignores it.
 
