@@ -44,7 +44,7 @@ automatically**.
 
 ```js
 const CAFE = {
-  upiId: "brewandbites@upi",   // ← your real merchant VPA (also settable in Admin → UPI Settings)
+  upiId: "9900905159@ybl",   // ← merchant VPA (this is the payment address; also settable in Admin → UPI Settings)
   upiName: "Brew & Bites Cafe",
   gstRate: 0.05,               // ← GST percentage (0.05 = 5%)
   adminPasscode: "1234",       // ← change this
@@ -103,10 +103,12 @@ To make confirmation fully automatic (no "I've Paid" tap):
 ## Troubleshooting
 
 ### "UPI app shows: something went wrong, please try again later"
-The UPI ID being used is not a registered VPA (the demo ships with the
-placeholder `brewandbites@upi`). Set the real ID in **Admin → UPI Settings**
-(or `CAFE.upiId` in `js/data.js`). The app guards this automatically and
-shows a warning instead of sending customers into a failing payment.
+This happens when the UPI ID being used is **not a registered VPA**. The repo
+ships with the cafe's real VPA (`9900905159@ybl`) already set in `CAFE.upiId`.
+If you ever switch to a different receive-address, set it in **Admin → UPI
+Settings** (or `CAFE.upiId` in `js/data.js`) — the app guards against the old
+demo placeholder (`brewandbites@upi`) and warns instead of sending customers
+into a failing payment.
 
 ### Nothing opens when I tap "Pay via UPI App" (desktop)
 Deep links need a phone with UPI apps. On desktop the app offers **Scan UPI

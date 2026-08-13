@@ -12,7 +12,7 @@ const CAFE = {
   // Replace it with YOUR real UPI ID before going live:
   //   - Personal: the VPA shown in your bank's UPI app (e.g. name@okhdfcbank, name@oksbi)
   //   - Business: a merchant VPA from your bank or a PSP (Razorpay/Cashfree/PhonePe PG)
-  upiId: "brewandbites@upi",
+  upiId: "9900905159@ybl",
   upiName: "Brew & Bites Cafe",
   gstRate: 0.05,          // 5% GST
   adminPasscode: "1234",  // admin dashboard passcode (demo)
