@@ -76,6 +76,21 @@ const isDefaultVpa = () => {
   return !v || !String(v).includes('@') || String(v).trim().toLowerCase() === DEFAULT_VPA;
 };
 const isMobileUA = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+const isIOSUA = () => /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+
+function copyText(t) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t); return true; }
+  } catch (e) { /* fall through */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  } catch (e) { /* clipboard unavailable */ }
+  return true;
+}
 
 /* ============ tables ============ */
 function getTables() {
@@ -727,7 +742,8 @@ function renderPay(view) {
           <div class="input ro-field">\uD83E\uDEF1 Table ${state.user.table}</div>
         </div>
       </div>
-      <div class="sub" style="margin-bottom:8px; font-weight:700">Pay by UPI to ${esc(vpa)}</div>
+      <div class="sub" style="margin-bottom:8px; font-weight:700">Pay by UPI to <span class="vpa-inline">${esc(vpa)}</span>
+        <button class="btn btn-ghost btn-xs" id="copyVpaBtn" type="button">Copy</button></div>
       <div class="method-card selected" data-m="upi">
         <div class="m-icon">&#128179;</div>
         <div class="m-info"><div class="m-name">UPI App</div><div class="m-desc">GPay / PhonePe / Paytm — pay ${fmtINR(b.total)} in one tap</div></div>
@@ -769,12 +785,15 @@ function renderPay(view) {
       const qrData = 'upi://pay?pa=' + vpa +
         '&pn=' + encodeURIComponent(CAFE.upiName) +
         '&am=' + b.total.toFixed(2) +
-        '&cu=INR&tn=' + encodeURIComponent('Table ' + state.user.table + ' ' + CAFE.name);
+        '&cu=INR&mode=02&purpose=00&tn=' + encodeURIComponent('Table ' + state.user.table + ' ' + CAFE.name);
       const img = $('#qrImg');
       img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(qrData);
       img.onerror = () => { /* QR service unreachable — UPI ID text remains */ };
     } else qa.classList.add('hidden');
   }));
+
+  const copyBtn = $('#copyVpaBtn');
+  if (copyBtn) copyBtn.addEventListener('click', () => { copyText(vpa); toast('UPI ID copied — paste it in any UPI app'); });
 
   $('#payNowBtn').addEventListener('click', () => {
     if (method === 'upi') openUpiApp(b);
@@ -788,6 +807,7 @@ function renderPay(view) {
 function openUpiApp(b) {
   if (isDefaultVpa()) { openUpiConfigModal(b); return; }
   if (!isMobileUA()) { openNoUpiModal(b); return; }
+  if (isIOSUA()) { openNoUpiModal(b); return; } // Safari blocks upi:// custom schemes → offer QR / copy instead
   fireUpiLink(b);
 }
 
@@ -798,7 +818,7 @@ function fireUpiLink(b) {
   const link = 'upi://pay?pa=' + encodeURIComponent(vpa) +
     '&pn=' + encodeURIComponent(CAFE.upiName) +
     '&am=' + b.total.toFixed(2) +
-    '&cu=INR&tn=' + encodeURIComponent(note);
+    '&cu=INR&mode=02&purpose=00&tn=' + encodeURIComponent(note);
   state.pending = p;
   store.set('cafe_pending', p);
   try { location.href = link; } catch (e) { /* custom-scheme blocked — stay on the pending screen */ }
@@ -825,14 +845,16 @@ function openNoUpiModal(b) {
   openModal(`
     <button class="close-x" id="noUpiClose">&#10005;</button>
     <h3>No UPI app detected</h3>
-    <p class="sub">This looks like a desktop browser. UPI deep links need a phone with GPay / PhonePe / Paytm installed.</p>
+    <p class="sub">This looks like a desktop browser. UPI deep links need a phone with GPay / PhonePe / Paytm installed. (iPhone Safari blocks UPI deep links — use the QR or copy the UPI ID below.)</p>
     <div class="demo-note">Open this page on your phone to pay there, or scan the QR with your phone's UPI app.</div>
+    <div class="copy-row"><span class="vpa">${esc(effectiveVpa())}</span><button class="btn" id="noUpiCopy" type="button">Copy UPI ID</button></div>
     <div style="display:flex; gap:10px; margin-top:14px">
       <button class="btn btn-ghost" id="noUpiTry" style="flex:1">Try anyway</button>
       <button class="btn" id="noUpiQr" style="flex:1">Scan QR instead</button>
     </div>
   `);
   $('#noUpiClose').addEventListener('click', closeModal);
+  $('#noUpiCopy').addEventListener('click', () => { copyText(effectiveVpa()); toast('UPI ID copied — paste it in any UPI app'); });
   $('#noUpiTry').addEventListener('click', () => { closeModal(); fireUpiLink(b); });
   $('#noUpiQr').addEventListener('click', () => { closeModal(); openQrPay(b); });
 }

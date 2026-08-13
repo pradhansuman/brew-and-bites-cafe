@@ -110,9 +110,35 @@ Settings** (or `CAFE.upiId` in `js/data.js`) — the app guards against the old
 demo placeholder (`brewandbites@upi`) and warns instead of sending customers
 into a failing payment.
 
-### Nothing opens when I tap "Pay via UPI App" (desktop)
-Deep links need a phone with UPI apps. On desktop the app offers **Scan UPI
-QR** instead, or **Simulate** for testing.
+### Nothing opens when I tap "Pay via UPI App"
+Deep links need a phone with UPI apps. The app now handles every case:
+- **Desktop browser** → a dialog appears: **Scan UPI QR** (scan with your
+  phone's UPI app), **Copy UPI ID** (paste in any UPI app), or **Simulate**.
+- **iPhone (Safari)** → Safari blocks `upi://` deep links, so the app does
+  NOT fire a dead link; it shows the same **QR / Copy UPI ID** dialog.
+- **Android** → the deep link fires (with `mode=02` intent, which GPay /
+  PhonePe / Paytm all understand) and opens the app chooser / pay screen.
+
+If the UPI app opens but shows "something went wrong", the VPA in use is not
+registered (see above) — update it in **Admin → UPI Settings**.
+
+### Payment never completes automatically
+This static app has no server, so it can't watch your bank account. The
+customer taps **I've Paid** after finishing the payment, and the admin is
+notified. Fully automatic confirmation needs the small webhook backend
+described in "Making it real-time" — the UPI apps themselves always work; only
+the auto-confirm is manual here.
+
+### Real SMS OTP (instead of the on-screen demo OTP)
+The demo OTP is shown on screen because a static site cannot send SMS by
+itself. Two ways to go real (pick one, I can implement either):
+1. **Firebase Phone Auth** (no server, works on static hosting) — needs a
+   Firebase project with phone sign-in enabled (Blaze plan) + a reCAPTCHA
+   config; customers get a real SMS OTP. App stays a single static deploy.
+2. **Small API + SMS provider** — a tiny Node service on Render (second
+   service) that calls MSG91 / Fast2SMS / Twilio to send and verify OTPs;
+   app calls `POST /api/send-otp`. Fully self-contained, no Firebase billing,
+   but two Render services and provider API keys.
 
 ### Admin didn't get the notification
 - Demo mode: admin and customer must share the same device/browser
@@ -137,7 +163,11 @@ Notes:
 - Data lives in each visitor's browser (`localStorage`). For the admin to see
   orders/payments from **other devices**, enable Firebase sync
   (`CAFE.rt` in `js/data.js`, see "Making it real-time").
-- Set your real UPI ID in `js/data.js` or Admin → UPI Settings.
+- Set your real UPI ID in `js/data.js` or Admin → UPI Settings
+  (currently `9900905159@ybl`).
+- **Real SMS OTP** is not part of the static build — see "Real SMS OTP" in
+  Troubleshooting for the two options (Firebase Phone Auth, or a small OTP
+  API service).
 - `nginx.conf` is only used by the Function Compute deployment — Render
   ignores it.
 
